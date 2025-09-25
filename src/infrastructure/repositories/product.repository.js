@@ -34,11 +34,24 @@ export const productRepository = {
   },
 
   remove: async (id) => {
-    const deletedProductData = await prisma.product.delete({
-      where: {
-        id,
-      },
+    // Usar transacción para eliminar primero las relaciones y luego el producto
+    const deletedProductData = await prisma.$transaction(async (tx) => {
+      // Eliminar primero todas las relaciones CartProduct
+      await tx.cartProduct.deleteMany({
+        where: { productId: id }
+      });
+
+      // Eliminar todas las relaciones OrderProduct
+      await tx.orderProduct.deleteMany({
+        where: { productId: id }
+      });
+
+      // Finalmente eliminar el producto
+      return await tx.product.delete({
+        where: { id }
+      });
     });
+
     return new Product(deletedProductData);
   },
 
